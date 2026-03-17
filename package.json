@@ -1,0 +1,16 @@
+{
+  "name": "@caffeine/template-app",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev:frontend": "npm run dev --prefix src/frontend",
+    "dev:backend": "npm run dev --prefix src/backend-node",
+    "build": "npm run build --prefix src/frontend",
+    "install:all": "npm install --prefix src/frontend && npm install --prefix src/backend-node"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.4"
+  }
+}

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: idfusion-backend
+    runtime: node
+    rootDir: src/backend-node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: PORT
+        value: 3001

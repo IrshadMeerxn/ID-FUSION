@@ -1,0 +1,7 @@
+node_modules/
+dist/
+build/
+.env
+*.lock
+pnpm-lock.yaml
+.DS_Store
