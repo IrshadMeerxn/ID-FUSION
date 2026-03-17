@@ -29,9 +29,7 @@ create table if not exists cards (
 -- Storage bucket for card photos (run in Supabase dashboard > Storage)
 -- Create a public bucket named: card-photos
 
--- Seed the admin credential (password: Irshad1327)
--- Replace the hash below by running: node -e "const b=require('bcryptjs');b.hash('Irshad1327',10).then(console.log)"
--- Or use the seed script: node seed-admin.js
+-- Seed the admin credential (username: Irshad, password: Irshad1327)
 insert into credentials (username, password_hash, role)
-values ('Irshad', '$2a$10$placeholder_run_seed_script', 'admin')
+values ('Irshad', '$2a$10$4OqZ6n34VD5Lkl9RcxS.pOpfH95XBwU5y6uh90X1HHObpkiEQ3H5C', 'admin')
 on conflict (username) do nothing;

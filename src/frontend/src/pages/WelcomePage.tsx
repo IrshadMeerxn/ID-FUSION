@@ -212,15 +212,8 @@ export default function WelcomePage() {
         {/* Footer */}
         <footer className="py-4 text-center">
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()}. Built with ❤️ using{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              caffeine.ai
-            </a>
+            © {new Date().getFullYear()}
+           
           </p>
         </footer>
       </div>
