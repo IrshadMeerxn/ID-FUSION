@@ -9,7 +9,20 @@ import supabase from "./supabase.js";
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    // Allow localhost for dev
+    if (origin.includes("localhost")) return callback(null, true);
+    // Allow all vercel.app deployments for this project
+    if (origin.includes("vercel.app")) return callback(null, true);
+    // Allow the configured frontend URL
+    if (origin === process.env.FRONTEND_URL) return callback(null, true);
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
