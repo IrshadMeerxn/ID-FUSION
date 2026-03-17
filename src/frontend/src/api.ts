@@ -1,6 +1,6 @@
 // Central API client — talks to the Render backend
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "https://idfusion-backend.onrender.com";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
