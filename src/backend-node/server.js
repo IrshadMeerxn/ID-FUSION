@@ -184,7 +184,7 @@ async function upsertCards(personId, cards) {
     const card = cards[type];
     if (!card) continue;
     await supabase.from("cards").upsert(
-      { person_id: personId, card_type: type, card_number: card.cardNumber, photo_url: card.photoUrl ?? null },
+      { person_id: personId, card_type: type, card_number: card.cardNumber, photo_front_url: card.photoFrontUrl ?? null, photo_back_url: card.photoBackUrl ?? null },
       { onConflict: "person_id,card_type" }
     );
   }
@@ -209,7 +209,7 @@ function formatPerson(row) {
   };
   for (const type of CARD_TYPES) {
     const card = row.cards?.find((c) => c.card_type === type);
-    person[type] = card ? { cardNumber: card.card_number, photoUrl: card.photo_url } : null;
+    person[type] = card ? { cardNumber: card.card_number, photoFrontUrl: card.photo_front_url, photoBackUrl: card.photo_back_url } : null;
   }
   return person;
 }

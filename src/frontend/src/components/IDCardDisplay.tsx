@@ -11,9 +11,35 @@ interface Props {
   accentColor?: string;
 }
 
-export default function IDCardDisplay({ title, card, accentColor = "text-primary" }: Props) {
-  const [showPhoto, setShowPhoto] = useState(false);
+function PhotoSection({ label, url }: { label: string; url: string | null }) {
+  const [show, setShow] = useState(false);
+  if (!url) return null;
+  return (
+    <div className="mb-2">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</p>
+        <div className="flex gap-1">
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={() => setShow((v) => !v)}>
+            {show ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+            {show ? "Hide" : "Show"}
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={() => window.open(url, "_blank")}>
+            <ExternalLink className="w-3 h-3" />
+          </Button>
+        </div>
+      </div>
+      <AnimatePresence>
+        {show && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+            <img src={url} alt={label} className="w-full rounded object-cover max-h-48" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
+export default function IDCardDisplay({ title, card, accentColor = "text-primary" }: Props) {
   if (!card) {
     return (
       <div className="rounded border border-border bg-muted/20 p-4 flex items-center gap-3 opacity-50">
@@ -25,8 +51,6 @@ export default function IDCardDisplay({ title, card, accentColor = "text-primary
       </div>
     );
   }
-
-  const photoUrl = card.photoUrl;
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded border border-border bg-card overflow-hidden card-glow card-glow-hover">
@@ -41,27 +65,10 @@ export default function IDCardDisplay({ title, card, accentColor = "text-primary
         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Card Number</p>
         <p className="id-number text-sm text-foreground font-medium">{card.cardNumber}</p>
       </div>
-      {photoUrl && (
+      {(card.photoFrontUrl || card.photoBackUrl) && (
         <div className="px-4 pb-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Photo</p>
-            <div className="flex gap-1">
-              <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={() => setShowPhoto((v) => !v)}>
-                {showPhoto ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
-                {showPhoto ? "Hide" : "Show"}
-              </Button>
-              <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={() => window.open(photoUrl, "_blank")}>
-                <ExternalLink className="w-3 h-3" />
-              </Button>
-            </div>
-          </div>
-          <AnimatePresence>
-            {showPhoto && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                <img src={photoUrl} alt={`${title} card`} className="w-full rounded object-cover max-h-48" />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <PhotoSection label="Front" url={card.photoFrontUrl} />
+          <PhotoSection label="Back" url={card.photoBackUrl} />
         </div>
       )}
     </motion.div>

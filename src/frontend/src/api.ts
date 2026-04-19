@@ -21,7 +21,8 @@ export type IDFusionRole = "admin" | "general" | "rto" | "passport" | "voter";
 
 export interface Card {
   cardNumber: string;
-  photoUrl: string | null;
+  photoFrontUrl: string | null;
+  photoBackUrl: string | null;
 }
 
 export interface Person {

@@ -14,12 +14,19 @@ import CardPhotoUpload from "./CardPhotoUpload";
 
 interface CardFormState {
   cardNumber: string;
-  file: File | null;
-  previewUrl: string | null;
-  existingUrl: string | null;
+  frontFile: File | null;
+  backFile: File | null;
+  frontPreview: string | null;
+  backPreview: string | null;
+  existingFrontUrl: string | null;
+  existingBackUrl: string | null;
 }
 
-const EMPTY_CARD: CardFormState = { cardNumber: "", file: null, previewUrl: null, existingUrl: null };
+const EMPTY_CARD: CardFormState = {
+  cardNumber: "", frontFile: null, backFile: null,
+  frontPreview: null, backPreview: null,
+  existingFrontUrl: null, existingBackUrl: null,
+};
 
 const CARD_FIELDS: { key: CardKey; label: string }[] = [
   { key: "aadhaarCard", label: "Aadhaar Card" },
@@ -42,7 +49,12 @@ interface Props {
 
 function initCardState(card?: Card | null): CardFormState {
   if (!card) return EMPTY_CARD;
-  return { cardNumber: card.cardNumber, file: null, previewUrl: card.photoUrl, existingUrl: card.photoUrl };
+  return {
+    cardNumber: card.cardNumber,
+    frontFile: null, backFile: null,
+    frontPreview: card.photoFrontUrl, backPreview: card.photoBackUrl,
+    existingFrontUrl: card.photoFrontUrl, existingBackUrl: card.photoBackUrl,
+  };
 }
 
 export default function PersonFormSheet({ open, onOpenChange, mode, person }: Props) {
@@ -79,7 +91,15 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
 
   const toggleCard = (key: CardKey) => setExpandedCards((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
   const updateCardNumber = (key: CardKey, value: string) => setCards((p) => ({ ...p, [key]: { ...p[key], cardNumber: value } }));
-  const handleFileReady = (key: CardKey, file: File | null, previewUrl: string | null) => setCards((p) => ({ ...p, [key]: { ...p[key], file, previewUrl } }));
+  const handleFileReady = (key: CardKey, side: "front" | "back", file: File | null, previewUrl: string | null) => {
+    setCards((p) => ({
+      ...p,
+      [key]: {
+        ...p[key],
+        ...(side === "front" ? { frontFile: file, frontPreview: previewUrl } : { backFile: file, backPreview: previewUrl }),
+      },
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,12 +111,17 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
       const cardEntries = await Promise.all(CARD_FIELDS.map(async ({ key }) => {
         const state = cards[key];
         if (!state.cardNumber.trim()) return [key, null] as const;
-        let photoUrl = state.existingUrl;
-        if (state.file) {
-          const result = await uploadImage.mutateAsync(state.file);
-          photoUrl = result.url;
+        let photoFrontUrl = state.existingFrontUrl;
+        let photoBackUrl = state.existingBackUrl;
+        if (state.frontFile) {
+          const result = await uploadImage.mutateAsync(state.frontFile);
+          photoFrontUrl = result.url;
         }
-        return [key, { cardNumber: state.cardNumber.trim(), photoUrl }] as const;
+        if (state.backFile) {
+          const result = await uploadImage.mutateAsync(state.backFile);
+          photoBackUrl = result.url;
+        }
+        return [key, { cardNumber: state.cardNumber.trim(), photoFrontUrl, photoBackUrl }] as const;
       }));
 
       const personData: Person = {
@@ -164,7 +189,7 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
                   {CARD_FIELDS.map(({ key, label }) => {
                     const isExpanded = expandedCards.has(key);
                     const state = cards[key];
-                    const isFilled = state.cardNumber.trim() || state.previewUrl;
+                    const isFilled = state.cardNumber.trim() || state.frontPreview || state.backPreview;
                     return (
                       <div key={key} className={`border rounded transition-colors ${isFilled ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}>
                         <button type="button" onClick={() => toggleCard(key)} className="w-full flex items-center justify-between px-4 py-3 text-left">
@@ -182,7 +207,10 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
                               <Label className="text-xs text-muted-foreground uppercase tracking-wider">Card Number</Label>
                               <Input value={state.cardNumber} onChange={(e) => updateCardNumber(key, e.target.value)} placeholder={`Enter ${label} number`} className="bg-background border-border focus:border-primary id-number" />
                             </div>
-                            <CardPhotoUpload label="Card Photo" currentPhotoUrl={state.existingUrl ?? undefined} onFileReady={(file, url) => handleFileReady(key, file, url)} />
+                            <div className="grid grid-cols-2 gap-3">
+                              <CardPhotoUpload label="Front" currentPhotoUrl={state.existingFrontUrl ?? undefined} onFileReady={(file, url) => handleFileReady(key, "front", file, url)} />
+                              <CardPhotoUpload label="Back" currentPhotoUrl={state.existingBackUrl ?? undefined} onFileReady={(file, url) => handleFileReady(key, "back", file, url)} />
+                            </div>
                           </div>
                         )}
                       </div>

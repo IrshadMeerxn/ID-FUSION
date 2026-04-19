@@ -22,7 +22,8 @@ create table if not exists cards (
   person_id text references persons(person_id) on delete cascade,
   card_type text not null check (card_type in ('aadhaarCard','panCard','rationCard','voterID','drivingLicense','rcCard','passport')),
   card_number text not null,
-  photo_url text,
+  photo_front_url text,
+  photo_back_url text,
   unique(person_id, card_type)
 );
 
