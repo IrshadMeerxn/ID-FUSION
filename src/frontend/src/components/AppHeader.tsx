@@ -20,7 +20,11 @@ export default function AppHeader({ profile }: Props) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 rounded bg-primary/15 border border-primary/30">
-            <img src="/assets/generated/idfusion-logo-transparent.dim_80x80.png" alt="ID Fusion" className="w-6 h-6 object-contain" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="5" width="20" height="14" rx="2" stroke="oklch(0.72 0.15 195)" strokeWidth="1.5"/>
+              <circle cx="9" cy="12" r="3" stroke="oklch(0.72 0.15 195)" strokeWidth="1.5"/>
+              <path d="M14 9h4M14 12h4M14 15h2" stroke="oklch(0.72 0.15 195)" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
           </div>
           <div className="flex flex-col leading-tight">
             <span className="font-display font-bold text-base text-foreground tracking-tight">ID Fusion</span>
