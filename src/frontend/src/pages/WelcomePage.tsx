@@ -198,13 +198,7 @@ export default function WelcomePage() {
                 </Button>
               </form>
 
-              {/* Role hint */}
-              <div className="mt-6 pt-5 border-t border-border/50">
-                <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                  Access is role-based. Contact the administrator if you need
-                  credentials.
-                </p>
-              </div>
+              
             </div>
           </motion.div>
         </main>
