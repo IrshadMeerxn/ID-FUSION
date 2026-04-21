@@ -202,12 +202,12 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="p-name" className="text-xs text-muted-foreground uppercase tracking-wider">Full Name <span className="text-destructive">*</span></Label>
-                    <Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Rajesh Kumar" className="bg-card border-border focus:border-primary" required />
+                    <Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter Name" className="bg-card border-border focus:border-primary" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="p-id" className="text-xs text-muted-foreground uppercase tracking-wider">Person ID</Label>
                     <div className={`h-10 px-3 flex items-center rounded border id-number text-sm ${personId ? "border-primary/30 bg-primary/5 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}>
-                      {personId || (mode === "create" ? "Auto-generated from pincode + DOB" : person?.personId)}
+                      {personId || (mode === "create" ? "Auto-generated" : person?.personId)}
                     </div>
                   </div>
                   <div className="space-y-2">
