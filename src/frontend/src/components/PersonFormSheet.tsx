@@ -2,14 +2,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Card, Person } from "../api";
 import { useCreatePerson, useUpdatePerson, useUploadImage } from "../hooks/useQueries";
+import { INDIA_STATES, getCitiesForState } from "../utils/indiaData";
 import CardPhotoUpload from "./CardPhotoUpload";
 
 interface CardFormState {
@@ -57,11 +58,27 @@ function initCardState(card?: Card | null): CardFormState {
   };
 }
 
+function parseAddress(address: string) {
+  // Try to parse "door, street, city, state, pincode" format
+  const parts = address.split(",").map((p) => p.trim());
+  return {
+    door: parts[0] || "",
+    street: parts[1] || "",
+    city: parts[2] || "",
+    state: parts[3] || "",
+    pincode: parts[4] || "",
+  };
+}
+
 export default function PersonFormSheet({ open, onOpenChange, mode, person }: Props) {
   const [name, setName] = useState(person?.name ?? "");
   const [personId, setPersonId] = useState(person?.personId ?? "");
   const [dateOfBirth, setDateOfBirth] = useState(person?.dateOfBirth ?? "");
-  const [address, setAddress] = useState(person?.address ?? "");
+  const [door, setDoor] = useState("");
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pincode, setPincode] = useState("");
   const [cards, setCards] = useState<Record<CardKey, CardFormState>>({
     aadhaarCard: initCardState(person?.aadhaarCard), panCard: initCardState(person?.panCard),
     rationCard: initCardState(person?.rationCard), voterID: initCardState(person?.voterID),
@@ -78,7 +95,10 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
   useEffect(() => {
     if (open) {
       setName(person?.name ?? ""); setPersonId(person?.personId ?? "");
-      setDateOfBirth(person?.dateOfBirth ?? ""); setAddress(person?.address ?? "");
+      setDateOfBirth(person?.dateOfBirth ?? "");
+      const parsed = parseAddress(person?.address ?? "");
+      setDoor(parsed.door); setStreet(parsed.street);
+      setCity(parsed.city); setState(parsed.state); setPincode(parsed.pincode);
       setCards({
         aadhaarCard: initCardState(person?.aadhaarCard), panCard: initCardState(person?.panCard),
         rationCard: initCardState(person?.rationCard), voterID: initCardState(person?.voterID),
@@ -103,9 +123,10 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !personId.trim() || !dateOfBirth.trim() || !address.trim()) {
+    if (!name.trim() || !personId.trim() || !dateOfBirth.trim() || !door.trim() || !street.trim() || !city || !state || !pincode.trim()) {
       toast.error("All personal info fields are required"); return;
     }
+    const address = `${door.trim()}, ${street.trim()}, ${city}, ${state}, ${pincode.trim()}`;
     setIsSubmitting(true);
     try {
       const cardEntries = await Promise.all(CARD_FIELDS.map(async ({ key }) => {
@@ -125,7 +146,7 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
       }));
 
       const personData: Person = {
-        personId: personId.trim(), name: name.trim(), dateOfBirth: dateOfBirth.trim(), address: address.trim(),
+        personId: personId.trim(), name: name.trim(), dateOfBirth: dateOfBirth.trim(), address: address,
         ...Object.fromEntries(cardEntries),
       } as Person;
 
@@ -173,9 +194,39 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
                     <Label htmlFor="p-dob" className="text-xs text-muted-foreground uppercase tracking-wider">Date of Birth <span className="text-destructive">*</span></Label>
                     <Input id="p-dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="bg-card border-border focus:border-primary" required />
                   </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="p-address" className="text-xs text-muted-foreground uppercase tracking-wider">Address <span className="text-destructive">*</span></Label>
-                    <Textarea id="p-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123, Main Street, City, State, PIN" className="bg-card border-border focus:border-primary resize-none" rows={2} required />
+                  <div className="space-y-2">
+                    <Label htmlFor="p-door" className="text-xs text-muted-foreground uppercase tracking-wider">Door / Flat No <span className="text-destructive">*</span></Label>
+                    <Input id="p-door" value={door} onChange={(e) => setDoor(e.target.value)} placeholder="e.g. 12B, Flat 3" className="bg-card border-border focus:border-primary" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="p-street" className="text-xs text-muted-foreground uppercase tracking-wider">Street <span className="text-destructive">*</span></Label>
+                    <Input id="p-street" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="e.g. MG Road" className="bg-card border-border focus:border-primary" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">State <span className="text-destructive">*</span></Label>
+                    <Select value={state} onValueChange={(v) => { setState(v); setCity(""); }}>
+                      <SelectTrigger className="bg-card border-border focus:border-primary">
+                        <SelectValue placeholder="Select state" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border max-h-60">
+                        {INDIA_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">City <span className="text-destructive">*</span></Label>
+                    <Select value={city} onValueChange={setCity} disabled={!state}>
+                      <SelectTrigger className="bg-card border-border focus:border-primary">
+                        <SelectValue placeholder={state ? "Select city" : "Select state first"} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border max-h-60">
+                        {getCitiesForState(state).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="p-pin" className="text-xs text-muted-foreground uppercase tracking-wider">Pincode <span className="text-destructive">*</span></Label>
+                    <Input id="p-pin" value={pincode} onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="e.g. 600001" maxLength={6} className="bg-card border-border focus:border-primary id-number" required />
                   </div>
                 </div>
               </section>
