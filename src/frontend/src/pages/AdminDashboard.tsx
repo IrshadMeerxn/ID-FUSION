@@ -2,17 +2,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronRight, Edit2, Eye, EyeOff, Loader2, Plus, Save, Search, Shield, Trash2, Users, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Edit2, Eye, EyeOff, Loader2, MapPin, Plus, Save, Search, Shield, Trash2, Users, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Credential, IDFusionRole, Person } from "../api";
 import AppHeader from "../components/AppHeader";
+import IDCardDisplay from "../components/IDCardDisplay";
 import PersonFormSheet from "../components/PersonFormSheet";
-import { useCreateCredential, useDeleteCredential, useDeletePerson, useListCredentials, useListPersons, useUpdateCredential } from "../hooks/useQueries";
+import { useCreateCredential, useDeleteCredential, useDeletePerson, useGetPerson, useListCredentials, useListPersons, useUpdateCredential } from "../hooks/useQueries";
 
 interface Props { profile: { name: string; idFusionRole: IDFusionRole } }
 
@@ -117,6 +118,61 @@ function RoleCredentialsCard({ cfg }: { cfg: (typeof ROLE_CONFIGS)[number] }) {
   );
 }
 
+function PersonDetailPanel({ person, onBack, onEdit }: { person: Person; onBack: () => void; onEdit: () => void }) {
+  const { data: fullPerson, isLoading } = useGetPerson(person.personId, "admin");
+  const p = fullPerson?.__kind__ === "adminView" ? fullPerson.adminView : person;
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-6">
+        <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground gap-1">
+          <ChevronLeft className="w-4 h-4" />Back
+        </Button>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-sm text-foreground">{person.name}</span>
+        <Button variant="outline" size="sm" onClick={onEdit} className="ml-auto border-primary/30 text-primary hover:bg-primary/10">
+          <Edit2 className="w-3.5 h-3.5 mr-1.5" />Edit
+        </Button>
+      </div>
+      {isLoading ? (
+        <div className="space-y-3"><Skeleton className="h-32 w-full" /><Skeleton className="h-24 w-full" /></div>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-card border border-border rounded p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 border border-primary/20">
+                <span className="font-display font-bold text-lg text-primary">{p.name.charAt(0).toUpperCase()}</span>
+              </div>
+              <div>
+                <h2 className="font-display font-semibold text-lg text-foreground">{p.name}</h2>
+                <p className="id-number text-xs text-muted-foreground">{p.personId}</p>
+              </div>
+            </div>
+            <Separator className="bg-border" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="flex items-start gap-2 text-muted-foreground">
+                <Calendar className="w-4 h-4 mt-0.5 shrink-0" />
+                <div><p className="text-[10px] uppercase tracking-wider mb-0.5">Date of Birth</p><p className="text-foreground">{p.dateOfBirth}</p></div>
+              </div>
+              <div className="flex items-start gap-2 text-muted-foreground">
+                <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                <div><p className="text-[10px] uppercase tracking-wider mb-0.5">Address</p><p className="text-foreground text-xs leading-relaxed">{p.address}</p></div>
+              </div>
+            </div>
+          </div>
+          <IDCardDisplay title="Aadhaar Card" card={p.aadhaarCard} />
+          <IDCardDisplay title="PAN Card" card={p.panCard} />
+          <IDCardDisplay title="Ration Card" card={p.rationCard} />
+          <IDCardDisplay title="Voter ID" card={p.voterID} accentColor="text-orange-400" />
+          <IDCardDisplay title="Driving License" card={p.drivingLicense} accentColor="text-emerald-400" />
+          <IDCardDisplay title="RC Card" card={p.rcCard} accentColor="text-emerald-400" />
+          <IDCardDisplay title="Passport" card={p.passport} accentColor="text-purple-400" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ManageLoginsTab() {
   return (
     <div className="space-y-4">
@@ -141,6 +197,7 @@ function ManageLoginsTab() {
 export default function AdminDashboard({ profile }: Props) {
   const [search, setSearch] = useState("");
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+  const [viewingPerson, setViewingPerson] = useState<Person | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null);
 
@@ -172,6 +229,17 @@ export default function AdminDashboard({ profile }: Props) {
             <TabsTrigger value="logins" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Shield className="w-3.5 h-3.5 mr-1.5" />Manage Logins</TabsTrigger>
           </TabsList>
           <TabsContent value="records">
+            <AnimatePresence mode="wait">
+            {viewingPerson ? (
+              <motion.div key="detail" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 16 }}>
+                <PersonDetailPanel
+                  person={viewingPerson}
+                  onBack={() => setViewingPerson(null)}
+                  onEdit={() => { setEditingPerson(viewingPerson); setViewingPerson(null); }}
+                />
+              </motion.div>
+            ) : (
+              <motion.div key="list" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div>
                 <h1 className="font-display text-2xl font-bold text-foreground">Identity Records</h1>
@@ -196,7 +264,9 @@ export default function AdminDashboard({ profile }: Props) {
               <div className="space-y-2">
                 <AnimatePresence>
                   {filteredPersons.map((person, i) => (
-                    <motion.div key={person.personId} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ delay: i * 0.03 }} className="bg-card border border-border rounded p-4 flex items-center justify-between gap-4 card-glow-hover group">
+                    <motion.div key={person.personId} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ delay: i * 0.03 }}
+                      className="bg-card border border-border rounded p-4 flex items-center justify-between gap-4 card-glow-hover group cursor-pointer"
+                      onClick={() => setViewingPerson(person)}>
                       <div className="flex items-center gap-4 min-w-0">
                         <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 border border-primary/20 shrink-0">
                           <span className="font-display font-bold text-sm text-primary">{person.name.charAt(0).toUpperCase()}</span>
@@ -210,12 +280,12 @@ export default function AdminDashboard({ profile }: Props) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Button variant="ghost" size="sm" onClick={() => setEditingPerson(person)} className="h-8 px-3 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setEditingPerson(person); }} className="h-8 px-3 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Edit2 className="w-3.5 h-3.5 mr-1" /><span className="text-xs hidden sm:inline">Edit</span>
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(person)} className="h-8 px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></Button>
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteTarget(person); }} className="h-8 px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent className="bg-card border-border">
                             <AlertDialogHeader>
@@ -230,13 +300,16 @@ export default function AdminDashboard({ profile }: Props) {
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <ChevronRight className="w-4 h-4 text-primary" />
                       </div>
                     </motion.div>
                   ))}
                 </AnimatePresence>
               </div>
             )}
+              </motion.div>
+            )}
+            </AnimatePresence>
           </TabsContent>
           <TabsContent value="logins"><ManageLoginsTab /></TabsContent>
         </Tabs>
