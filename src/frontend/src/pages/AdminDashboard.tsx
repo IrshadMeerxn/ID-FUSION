@@ -2,6 +2,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +15,7 @@ import AppHeader from "../components/AppHeader";
 import IDCardDisplay from "../components/IDCardDisplay";
 import PersonFormSheet from "../components/PersonFormSheet";
 import { useCreateCredential, useDeleteCredential, useDeletePerson, useGetPerson, useListCredentials, useListPersons, useUpdateCredential } from "../hooks/useQueries";
+import { INDIA_STATES, getCitiesForState } from "../utils/indiaData";
 
 interface Props { profile: { name: string; idFusionRole: IDFusionRole } }
 
@@ -207,6 +209,8 @@ function ManageLoginsTab() {
 
 export default function AdminDashboard({ profile }: Props) {
   const [search, setSearch] = useState("");
+  const [filterState, setFilterState] = useState("");
+  const [filterCity, setFilterCity] = useState("");
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [viewingPerson, setViewingPerson] = useState<Person | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -217,10 +221,14 @@ export default function AdminDashboard({ profile }: Props) {
 
   const filteredPersons = useMemo(() => {
     if (!persons) return [];
-    if (!search.trim()) return persons;
-    const q = search.toLowerCase();
-    return persons.filter((p) => p.name.toLowerCase().includes(q) || p.personId.toLowerCase().includes(q));
-  }, [persons, search]);
+    return persons.filter((p) => {
+      const q = search.toLowerCase();
+      const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.personId.toLowerCase().includes(q);
+      const matchesState = !filterState || p.address.includes(filterState);
+      const matchesCity = !filterCity || p.address.includes(filterCity);
+      return matchesSearch && matchesState && matchesCity;
+    });
+  }, [persons, search, filterState, filterCity]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -258,10 +266,35 @@ export default function AdminDashboard({ profile }: Props) {
               </div>
               <Button onClick={() => setIsAddOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"><Plus className="w-4 h-4" />Add Person</Button>
             </div>
-            <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Search by name or ID…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-card border-border focus:border-primary" />
-              {search && <button type="button" onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>}
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Search by name or ID…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-card border-border focus:border-primary" />
+                {search && <button type="button" onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>}
+              </div>
+              <Select value={filterState} onValueChange={(v) => { setFilterState(v === "_all" ? "" : v); setFilterCity(""); }}>
+                <SelectTrigger className="w-full sm:w-44 bg-card border-border">
+                  <SelectValue placeholder="All States" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border max-h-60">
+                  <SelectItem value="_all">All States</SelectItem>
+                  {INDIA_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filterCity} onValueChange={(v) => setFilterCity(v === "_all" ? "" : v)} disabled={!filterState}>
+                <SelectTrigger className="w-full sm:w-44 bg-card border-border">
+                  <SelectValue placeholder={filterState ? "All Cities" : "Select state first"} />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border max-h-60">
+                  <SelectItem value="_all">All Cities</SelectItem>
+                  {getCitiesForState(filterState).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {(filterState || filterCity) && (
+                <Button variant="ghost" size="sm" onClick={() => { setFilterState(""); setFilterCity(""); }} className="text-muted-foreground hover:text-foreground shrink-0">
+                  <X className="w-3.5 h-3.5 mr-1" />Clear
+                </Button>
+              )}
             </div>
             {isLoading ? (
               <div className="space-y-3">{["sk1","sk2","sk3"].map((k) => <Skeleton key={k} className="h-20 w-full rounded" />)}</div>

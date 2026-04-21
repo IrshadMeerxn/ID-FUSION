@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, ChevronLeft, MapPin, Search, User, Users, X } from "lucide-react";
@@ -10,6 +11,7 @@ import type { IDFusionRole } from "../api";
 import AppHeader from "../components/AppHeader";
 import IDCardDisplay from "../components/IDCardDisplay";
 import { useGetPerson, useSearchPersons } from "../hooks/useQueries";
+import { INDIA_STATES, getCitiesForState } from "../utils/indiaData";
 import { ROLE_BG_COLORS, ROLE_COLORS, ROLE_LABELS } from "../utils/roleUtils";
 
 interface Props { profile: { name: string; idFusionRole: IDFusionRole } }
@@ -96,9 +98,18 @@ const ROLE_ACCESS_LABEL: Record<IDFusionRole, string> = {
 
 export default function RoleDashboard({ profile }: Props) {
   const [search, setSearch] = useState("");
+  const [filterState, setFilterState] = useState("");
+  const [filterCity, setFilterCity] = useState("");
   const [view, setView] = useState<ViewState>("list");
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const { data: persons, isLoading } = useSearchPersons(search);
+  const { data: allPersons, isLoading } = useSearchPersons(search);
+
+  const persons = allPersons?.filter((p) => {
+    const matchesState = !filterState || p.address.includes(filterState);
+    const matchesCity = !filterCity || p.address.includes(filterCity);
+    return matchesState && matchesCity;
+  });
+
   const role = profile.idFusionRole;
 
   return (
@@ -119,10 +130,35 @@ export default function RoleDashboard({ profile }: Props) {
                   <p className="text-sm text-muted-foreground mt-1">View identity information for registered persons</p>
                 </div>
               </div>
-              <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Search by name..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-card border-border focus:border-primary" />
-                {search && <button type="button" onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>}
+              <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Search by name..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 bg-card border-border focus:border-primary" />
+                  {search && <button type="button" onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>}
+                </div>
+                <Select value={filterState} onValueChange={(v) => { setFilterState(v === "_all" ? "" : v); setFilterCity(""); }}>
+                  <SelectTrigger className="w-full sm:w-44 bg-card border-border">
+                    <SelectValue placeholder="All States" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border max-h-60">
+                    <SelectItem value="_all">All States</SelectItem>
+                    {INDIA_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={filterCity} onValueChange={(v) => setFilterCity(v === "_all" ? "" : v)} disabled={!filterState}>
+                  <SelectTrigger className="w-full sm:w-44 bg-card border-border">
+                    <SelectValue placeholder={filterState ? "All Cities" : "Select state first"} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border max-h-60">
+                    <SelectItem value="_all">All Cities</SelectItem>
+                    {getCitiesForState(filterState).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {(filterState || filterCity) && (
+                  <Button variant="ghost" size="sm" onClick={() => { setFilterState(""); setFilterCity(""); }} className="text-muted-foreground hover:text-foreground shrink-0">
+                    <X className="w-3.5 h-3.5 mr-1" />Clear
+                  </Button>
+                )}
               </div>
               {isLoading ? (
                 <div className="space-y-3">{["sk1","sk2","sk3"].map((k) => <Skeleton key={k} className="h-16 w-full rounded" />)}</div>
