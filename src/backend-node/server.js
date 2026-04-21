@@ -56,13 +56,22 @@ app.get("/api/credentials", async (req, res) => {
   res.json(data);
 });
 
+const ROLE_PREFIXES: Record<string, string> = {
+  general: "gen_",
+  rto: "rto_",
+  passport: "pas_",
+  voter: "vot_",
+};
+
 app.post("/api/credentials", async (req, res) => {
   const { username, password, role } = req.body;
   if (!username || !password || !role) return res.status(400).json({ error: "username, password, role required" });
+  const prefix = ROLE_PREFIXES[role] || "";
+  const finalUsername = username.startsWith(prefix) ? username : `${prefix}${username}`;
   const password_hash = await bcrypt.hash(password, 10);
   const { data, error } = await supabase
     .from("credentials")
-    .insert({ id: uuidv4(), username, password_hash, role })
+    .insert({ id: uuidv4(), username: finalUsername, password_hash, role })
     .select("id, username, role")
     .single();
   if (error) return res.status(500).json({ error: error.message });

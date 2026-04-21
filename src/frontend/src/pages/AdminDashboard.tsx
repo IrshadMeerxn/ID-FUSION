@@ -18,11 +18,11 @@ import { useCreateCredential, useDeleteCredential, useDeletePerson, useGetPerson
 interface Props { profile: { name: string; idFusionRole: IDFusionRole } }
 
 type NonAdminRole = Exclude<IDFusionRole, "admin">;
-const ROLE_CONFIGS: Array<{ key: NonAdminRole; label: string; icon: string; color: string }> = [
-  { key: "general", label: "General Login", icon: "👤", color: "text-primary" },
-  { key: "rto", label: "RTO Login", icon: "🚗", color: "text-emerald-400" },
-  { key: "passport", label: "Passport Login", icon: "✈️", color: "text-purple-400" },
-  { key: "voter", label: "Voter Login", icon: "🗳️", color: "text-orange-400" },
+const ROLE_CONFIGS: Array<{ key: NonAdminRole; label: string; icon: string; color: string; prefix: string }> = [
+  { key: "general", label: "General Login", icon: "👤", color: "text-primary", prefix: "gen_" },
+  { key: "rto", label: "RTO Login", icon: "🚗", color: "text-emerald-400", prefix: "rto_" },
+  { key: "passport", label: "Passport Login", icon: "✈️", color: "text-purple-400", prefix: "pas_" },
+  { key: "voter", label: "Voter Login", icon: "🗳️", color: "text-orange-400", prefix: "vot_" },
 ];
 
 type NewRow = { username: string; password: string; show: boolean };
@@ -36,6 +36,10 @@ function RoleCredentialsCard({ cfg }: { cfg: (typeof ROLE_CONFIGS)[number] }) {
   const [newRow, setNewRow] = useState<NewRow>({ username: "", password: "", show: false });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRow, setEditRow] = useState<NewRow>({ username: "", password: "", show: false });
+
+  // Strip prefix for display
+  const displayName = (username: string) =>
+    username.startsWith(cfg.prefix) ? username.slice(cfg.prefix.length) : username;
 
   const handleAdd = async () => {
     if (!newRow.username.trim() || !newRow.password.trim()) { toast.error("Username and password are required"); return; }
@@ -51,12 +55,12 @@ function RoleCredentialsCard({ cfg }: { cfg: (typeof ROLE_CONFIGS)[number] }) {
     catch (e: any) { toast.error(e.message || "Failed to remove credential"); }
   };
 
-  const startEdit = (c: Credential) => { setEditingId(c.id); setEditRow({ username: c.username, password: "", show: false }); };
+  const startEdit = (c: Credential) => { setEditingId(c.id); setEditRow({ username: displayName(c.username), password: "", show: false }); };
 
   const handleSaveEdit = async () => {
     if (!editingId || !editRow.username.trim() || !editRow.password.trim()) { toast.error("Username and password are required"); return; }
     try {
-      await updateCred.mutateAsync({ id: editingId, username: editRow.username.trim(), password: editRow.password });
+      await updateCred.mutateAsync({ id: editingId, username: `${cfg.prefix}${editRow.username.trim()}`, password: editRow.password });
       setEditingId(null); toast.success("Credential updated");
     } catch (e: any) { toast.error(e.message || "Failed to update credential"); }
   };
@@ -77,7 +81,10 @@ function RoleCredentialsCard({ cfg }: { cfg: (typeof ROLE_CONFIGS)[number] }) {
               <motion.div key={c.id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                 {editingId === c.id ? (
                   <div className="flex items-center gap-2 p-2 rounded bg-background border border-primary/30">
-                    <Input type="text" value={editRow.username} onChange={(e) => setEditRow((r) => ({ ...r, username: e.target.value }))} placeholder="Username" className="h-8 text-xs flex-1 bg-transparent border-input" />
+                    <div className="flex items-center flex-1 bg-transparent border border-input rounded overflow-hidden h-8">
+                      <span className="px-2 text-xs text-primary font-mono bg-primary/10 border-r border-input h-full flex items-center">{cfg.prefix}</span>
+                      <Input type="text" value={editRow.username} onChange={(e) => setEditRow((r) => ({ ...r, username: e.target.value }))} placeholder="username" className="h-8 text-xs border-0 bg-transparent focus-visible:ring-0 flex-1" />
+                    </div>
                     <div className="relative flex-1">
                       <Input type={editRow.show ? "text" : "password"} value={editRow.password} onChange={(e) => setEditRow((r) => ({ ...r, password: e.target.value }))} placeholder="New password" className="h-8 text-xs pr-8 bg-transparent border-input" />
                       <button type="button" onClick={() => setEditRow((r) => ({ ...r, show: !r.show }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" tabIndex={-1}>
@@ -89,7 +96,8 @@ function RoleCredentialsCard({ cfg }: { cfg: (typeof ROLE_CONFIGS)[number] }) {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 px-3 py-2 rounded bg-background/50 border border-border/60 group">
-                    <span className="text-xs font-medium text-foreground flex-1 truncate">{c.username}</span>
+                    <span className="text-xs font-mono text-primary">{cfg.prefix}</span>
+                    <span className="text-xs font-medium text-foreground flex-1 truncate">{displayName(c.username)}</span>
                     <span className="text-xs text-muted-foreground flex-1 font-mono tracking-widest">{"•".repeat(8)}</span>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button size="sm" variant="ghost" onClick={() => startEdit(c)} className="h-6 px-1.5 text-muted-foreground hover:text-primary"><Edit2 className="w-3 h-3" /></Button>
@@ -103,7 +111,10 @@ function RoleCredentialsCard({ cfg }: { cfg: (typeof ROLE_CONFIGS)[number] }) {
         </div>
       )}
       <div className="flex items-center gap-2 p-2 rounded border border-dashed border-border bg-background/30">
-        <Input type="text" value={newRow.username} onChange={(e) => setNewRow((r) => ({ ...r, username: e.target.value }))} placeholder="Username" autoComplete="off" className="h-8 text-xs flex-1 bg-transparent border-input focus:border-primary" onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
+        <div className="flex items-center flex-1 bg-transparent border border-input rounded overflow-hidden h-8">
+          <span className="px-2 text-xs text-primary font-mono bg-primary/10 border-r border-input h-full flex items-center">{cfg.prefix}</span>
+          <Input type="text" value={newRow.username} onChange={(e) => setNewRow((r) => ({ ...r, username: e.target.value }))} placeholder="username" autoComplete="off" className="h-8 text-xs border-0 bg-transparent focus-visible:ring-0 flex-1" onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
+        </div>
         <div className="relative flex-1">
           <Input type={newRow.show ? "text" : "password"} value={newRow.password} onChange={(e) => setNewRow((r) => ({ ...r, password: e.target.value }))} placeholder="Password" autoComplete="new-password" className="h-8 text-xs pr-8 bg-transparent border-input focus:border-primary" onKeyDown={(e) => e.key === "Enter" && handleAdd()} />
           <button type="button" onClick={() => setNewRow((r) => ({ ...r, show: !r.show }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" tabIndex={-1}>
