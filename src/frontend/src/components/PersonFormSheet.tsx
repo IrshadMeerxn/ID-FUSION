@@ -9,7 +9,7 @@ import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Card, Person } from "../api";
-import { useCreatePerson, useUpdatePerson, useUploadImage } from "../hooks/useQueries";
+import { useCreatePerson, useListPersons, useUpdatePerson, useUploadImage } from "../hooks/useQueries";
 import { INDIA_STATES, getCitiesForState } from "../utils/indiaData";
 import CardPhotoUpload from "./CardPhotoUpload";
 
@@ -79,6 +79,21 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [pincode, setPincode] = useState("");
+
+  const { data: existingPersons } = useListPersons();
+
+  // Auto-generate personId for create mode: PINCODE-BIRTHYEAR-RECORDNO
+  useEffect(() => {
+    if (mode !== "create") return;
+    const year = dateOfBirth ? dateOfBirth.split("-")[0] : "";
+    const pin = pincode.length === 6 ? pincode : "";
+    const recordNo = String((existingPersons?.length ?? 0) + 1).padStart(3, "0");
+    if (pin && year) {
+      setPersonId(`${pin}-${year}-${recordNo}`);
+    } else {
+      setPersonId("");
+    }
+  }, [pincode, dateOfBirth, existingPersons, mode]);
   const [cards, setCards] = useState<Record<CardKey, CardFormState>>({
     aadhaarCard: initCardState(person?.aadhaarCard), panCard: initCardState(person?.panCard),
     rationCard: initCardState(person?.rationCard), voterID: initCardState(person?.voterID),
@@ -123,8 +138,11 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !personId.trim() || !dateOfBirth.trim() || !door.trim() || !street.trim() || !city || !state || !pincode.trim()) {
+    if (!name.trim() || !dateOfBirth.trim() || !door.trim() || !street.trim() || !city || !state || !pincode.trim()) {
       toast.error("All personal info fields are required"); return;
+    }
+    if (mode === "create" && !personId) {
+      toast.error("Enter pincode and date of birth to generate Person ID"); return;
     }
     const address = `${door.trim()}, ${street.trim()}, ${city}, ${state}, ${pincode.trim()}`;
     setIsSubmitting(true);
@@ -187,8 +205,10 @@ export default function PersonFormSheet({ open, onOpenChange, mode, person }: Pr
                     <Input id="p-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Rajesh Kumar" className="bg-card border-border focus:border-primary" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="p-id" className="text-xs text-muted-foreground uppercase tracking-wider">Person ID <span className="text-destructive">*</span></Label>
-                    <Input id="p-id" value={personId} onChange={(e) => setPersonId(e.target.value)} placeholder="e.g. PRS-2024-001" className="bg-card border-border focus:border-primary id-number" required readOnly={mode === "edit"} />
+                    <Label htmlFor="p-id" className="text-xs text-muted-foreground uppercase tracking-wider">Person ID</Label>
+                    <div className={`h-10 px-3 flex items-center rounded border id-number text-sm ${personId ? "border-primary/30 bg-primary/5 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}>
+                      {personId || (mode === "create" ? "Auto-generated from pincode + DOB" : person?.personId)}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="p-dob" className="text-xs text-muted-foreground uppercase tracking-wider">Date of Birth <span className="text-destructive">*</span></Label>
