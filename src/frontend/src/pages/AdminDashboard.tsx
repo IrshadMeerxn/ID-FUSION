@@ -131,9 +131,18 @@ function RoleCredentialsCard({ cfg }: { cfg: (typeof ROLE_CONFIGS)[number] }) {
   );
 }
 
-function PersonDetailPanel({ person, onBack, onEdit }: { person: Person; onBack: () => void; onEdit: () => void }) {
+function PersonDetailPanel({ person, onBack, onEdit, onDelete }: { person: Person; onBack: () => void; onEdit: () => void; onDelete: () => void }) {
   const { data: fullPerson, isLoading } = useGetPerson(person.personId, "admin");
   const p = fullPerson?.__kind__ === "adminView" ? fullPerson.adminView : person;
+  const deletePerson = useDeletePerson();
+
+  const handleDelete = async () => {
+    try {
+      await deletePerson.mutateAsync(person.personId);
+      toast.success(`${person.name} has been removed`);
+      onDelete();
+    } catch { toast.error("Failed to delete person"); }
+  };
 
   return (
     <div>
@@ -143,9 +152,30 @@ function PersonDetailPanel({ person, onBack, onEdit }: { person: Person; onBack:
         </Button>
         <span className="text-muted-foreground">/</span>
         <span className="text-sm text-foreground">{person.name}</span>
-        <Button variant="outline" size="sm" onClick={onEdit} className="ml-auto border-primary/30 text-primary hover:bg-primary/10">
-          <Edit2 className="w-3.5 h-3.5 mr-1.5" />Edit
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={onEdit} className="border-primary/30 text-primary hover:bg-primary/10">
+            <Edit2 className="w-3.5 h-3.5 mr-1.5" />Edit
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="border-destructive/30 text-destructive hover:bg-destructive/10">
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-card border-border">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-display">Delete Record</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground">This will permanently remove <strong className="text-foreground">{person.name}</strong>'s identity record. This action cannot be undone.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} disabled={deletePerson.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  {deletePerson.isPending ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Deleting…</> : "Delete Record"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
       {isLoading ? (
         <div className="space-y-3"><Skeleton className="h-32 w-full" /><Skeleton className="h-24 w-full" /></div>
@@ -214,10 +244,8 @@ export default function AdminDashboard({ profile }: Props) {
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [viewingPerson, setViewingPerson] = useState<Person | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Person | null>(null);
 
   const { data: persons, isLoading } = useListPersons();
-  const deletePerson = useDeletePerson();
 
   const filteredPersons = useMemo(() => {
     if (!persons) return [];
@@ -229,12 +257,6 @@ export default function AdminDashboard({ profile }: Props) {
       return matchesSearch && matchesState && matchesCity;
     });
   }, [persons, search, filterState, filterCity]);
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    try { await deletePerson.mutateAsync(deleteTarget.personId); toast.success(`${deleteTarget.name} has been removed`); setDeleteTarget(null); }
-    catch { toast.error("Failed to delete person"); }
-  };
 
   const cardCount = (p: Person) => [p.aadhaarCard, p.panCard, p.rationCard, p.voterID, p.drivingLicense, p.rcCard, p.passport].filter(Boolean).length;
 
@@ -255,6 +277,7 @@ export default function AdminDashboard({ profile }: Props) {
                   person={viewingPerson}
                   onBack={() => setViewingPerson(null)}
                   onEdit={() => { setEditingPerson(viewingPerson); setViewingPerson(null); }}
+                  onDelete={() => setViewingPerson(null)}
                 />
               </motion.div>
             ) : (
@@ -324,26 +347,6 @@ export default function AdminDashboard({ profile }: Props) {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setEditingPerson(person); }} className="h-8 px-3 text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Edit2 className="w-3.5 h-3.5 mr-1" /><span className="text-xs hidden sm:inline">Edit</span>
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteTarget(person); }} className="h-8 px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-card border-border">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="font-display">Delete Record</AlertDialogTitle>
-                              <AlertDialogDescription className="text-muted-foreground">This will permanently remove <strong className="text-foreground">{person.name}</strong>'s identity record. This action cannot be undone.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={handleDelete} disabled={deletePerson.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                {deletePerson.isPending ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Deleting…</> : "Delete Record"}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                         <ChevronRight className="w-4 h-4 text-primary" />
                       </div>
                     </motion.div>
