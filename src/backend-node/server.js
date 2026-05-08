@@ -31,22 +31,14 @@ app.post("/api/auth/login", async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
 
-  // Try exact username first, then try with each role prefix
-  const prefixes = ["gen_", "rto_", "pas_", "vot_", ""];
-  const candidates = [...new Set([username, ...prefixes.map(p => `${p}${username}`)])];
+  const { data } = await supabase.from("credentials").select("*").eq("username", username).single();
 
-  let matched = null;
-  for (const candidate of candidates) {
-    const { data } = await supabase.from("credentials").select("*").eq("username", candidate).single();
-    if (data) { matched = data; break; }
-  }
+  if (!data) return res.status(401).json({ error: "Invalid credentials" });
 
-  if (!matched) return res.status(401).json({ error: "Invalid credentials" });
-
-  const valid = await bcrypt.compare(password, matched.password_hash);
+  const valid = await bcrypt.compare(password, data.password_hash);
   if (!valid) return res.status(401).json({ error: "Invalid credentials" });
 
-  res.json({ role: matched.role, username: matched.username });
+  res.json({ role: data.role, username: data.username });
 });
 
 // ── Credentials (admin only) ──────────────────────────────────────────────────

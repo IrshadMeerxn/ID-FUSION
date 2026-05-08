@@ -198,7 +198,15 @@ export default function WelcomePage() {
                 </Button>
               </form>
 
-              
+              <div className="mt-6 pt-5 border-t border-border/50">
+                <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                  Use your full username with prefix —{" "}
+                  <span className="text-primary font-mono">gen_name</span>,{" "}
+                  <span className="text-primary font-mono">rto_name</span>,{" "}
+                  <span className="text-primary font-mono">pas_name</span>,{" "}
+                  <span className="text-primary font-mono">vot_name</span>
+                </p>
+              </div>
             </div>
           </motion.div>
         </main>
