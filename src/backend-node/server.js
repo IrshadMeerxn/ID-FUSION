@@ -52,7 +52,7 @@ app.get("/api/credentials", async (req, res) => {
   res.json(data);
 });
 
-const ROLE_PREFIXES: Record<string, string> = {
+const ROLE_PREFIXES = {
   general: "gen_",
   rto: "rto_",
   passport: "pas_",
