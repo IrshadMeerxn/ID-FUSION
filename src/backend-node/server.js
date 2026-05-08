@@ -31,18 +31,22 @@ app.post("/api/auth/login", async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
 
-  const { data, error } = await supabase
-    .from("credentials")
-    .select("*")
-    .eq("username", username)
-    .single();
+  // Try exact username first, then try with each role prefix
+  const prefixes = ["gen_", "rto_", "pas_", "vot_", ""];
+  const candidates = [...new Set([username, ...prefixes.map(p => `${p}${username}`)])];
 
-  if (error || !data) return res.status(401).json({ error: "Invalid credentials" });
+  let matched = null;
+  for (const candidate of candidates) {
+    const { data } = await supabase.from("credentials").select("*").eq("username", candidate).single();
+    if (data) { matched = data; break; }
+  }
 
-  const valid = await bcrypt.compare(password, data.password_hash);
+  if (!matched) return res.status(401).json({ error: "Invalid credentials" });
+
+  const valid = await bcrypt.compare(password, matched.password_hash);
   if (!valid) return res.status(401).json({ error: "Invalid credentials" });
 
-  res.json({ role: data.role, username: data.username });
+  res.json({ role: matched.role, username: matched.username });
 });
 
 // ── Credentials (admin only) ──────────────────────────────────────────────────
@@ -74,15 +78,24 @@ app.post("/api/credentials", async (req, res) => {
     .insert({ id: uuidv4(), username: finalUsername, password_hash, role })
     .select("id, username, role")
     .single();
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return res.status(500).json({ error: error.message.includes("unique") ? "Username already exists" : error.message });
   res.status(201).json(data);
 });
 
 app.put("/api/credentials/:id", async (req, res) => {
   const { username, password } = req.body;
+
+  // Get current record to know the role and apply correct prefix
+  const { data: current } = await supabase.from("credentials").select("role").eq("id", req.params.id).single();
+  const prefix = current ? (ROLE_PREFIXES[current.role] || "") : "";
+
   const updates = {};
-  if (username) updates.username = username;
+  if (username) {
+    const finalUsername = username.startsWith(prefix) ? username : `${prefix}${username}`;
+    updates.username = finalUsername;
+  }
   if (password) updates.password_hash = await bcrypt.hash(password, 10);
+
   const { data, error } = await supabase
     .from("credentials")
     .update(updates)
