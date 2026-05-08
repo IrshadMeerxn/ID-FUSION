@@ -62,7 +62,7 @@ function RoleCredentialsCard({ cfg }: { cfg: (typeof ROLE_CONFIGS)[number] }) {
   const handleSaveEdit = async () => {
     if (!editingId || !editRow.username.trim() || !editRow.password.trim()) { toast.error("Username and password are required"); return; }
     try {
-      await updateCred.mutateAsync({ id: editingId, username: `${cfg.prefix}${editRow.username.trim()}`, password: editRow.password });
+      await updateCred.mutateAsync({ id: editingId, username: editRow.username.trim(), password: editRow.password });
       setEditingId(null); toast.success("Credential updated");
     } catch (e: any) { toast.error(e.message || "Failed to update credential"); }
   };
